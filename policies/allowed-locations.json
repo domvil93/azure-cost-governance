@@ -1,0 +1,69 @@
+mkdir -p azure-cost-governance/{policies,scripts,docs}
+cd azure-cost-governance
+
+# Create the allowed locations policy
+cat > policies/allowed-locations.json << 'EOF'
+{
+  "properties": {
+    "displayName": "Allowed locations",
+    "description": "Restricts resource deployment to approved Azure regions only. Enforces data residency requirements.",
+    "policyType": "Custom",
+    "mode": "All",
+    "parameters": {
+      "allowedLocations": {
+        "type": "Array",
+        "metadata": {
+          "displayName": "Allowed locations",
+          "description": "List of permitted Azure regions"
+        },
+        "defaultValue": ["australiaeast", "australiasoutheast"]
+      }
+    },
+    "policyRule": {
+      "if": {
+        "not": {
+          "field": "location",
+          "in": "[parameters('allowedLocations')]"
+        }
+      },
+      "then": {
+        "effect": "deny"
+      }
+    }
+  }
+}
+EOF
+
+# Create the required tags policy
+cat > policies/require-tags.json << 'EOF'
+{
+  "properties": {
+    "displayName": "Require mandatory tags on all resources",
+    "description": "Denies creation of resources missing required cost allocation tags.",
+    "policyType": "Custom",
+    "mode": "Indexed",
+    "parameters": {
+      "tagName": {
+        "type": "String",
+        "metadata": {
+          "displayName": "Tag name",
+          "description": "Name of the required tag"
+        }
+      }
+    },
+    "policyRule": {
+      "if": {
+        "field": "[concat('tags[', parameters('tagName'), ']')]",
+        "exists": "false"
+      },
+      "then": {
+        "effect": "deny"
+      }
+    }
+  }
+}
+EOF
+
+git add .
+git commit -m "add Azure Policy definitions for location and tag enforcement"
+git push
